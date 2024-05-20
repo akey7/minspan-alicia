@@ -2,3 +2,7 @@
 gurobi.log
 snapshots
 profile_minspan/*
+
+# Other stuff
+.DS_Store
+*.egg-info
