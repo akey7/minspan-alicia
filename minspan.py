@@ -4,10 +4,7 @@ from fractions import Fraction
 from datetime import datetime
 from itertools import repeat
 from warnings import warn
-try:
-    from cPickle import dumps, loads
-except ImportError:
-    from Pickle import dumps, loads
+from pickle import dumps, loads
 
 import numpy
 from numpy import abs, array, float64, zeros, ones, compress, \
@@ -235,7 +232,7 @@ def calculate_minspan_column(model_pickle, original_fluxes, column_index, N,
     if k < 1:
         if abs(oldPath).max() / k > default_bound:
             N2 *= 1.0 / k
-            print "N2 scaled"
+            print("N2 scaled")
         else:
             oldPath *= 1.0 / k
 
@@ -295,7 +292,7 @@ def calculate_minspan_column(model_pickle, original_fluxes, column_index, N,
         flux = array(solution.x[:n])
         flux[bin_flux < 1e-3] = 0  # round down
     else:
-        print solution.status
+        print(solution.status)
         if solver_name.startswith("cplex"):
             status = lp.solution.get_status_string()
         elif solver_name.startswith("gurobi"):
@@ -349,7 +346,7 @@ def minspan(model, starting_fluxes=None, coverage=10, cores=4, processes="auto",
         else:
             solver_name = cobra.solvers.solver_dict.keys()[0]
         if verbose:
-            print "using solver", solver_name
+            print("using solver", solver_name)
     # copy the model, extract S, add indicators, and store indicator-model
     model = model.copy()
     prepare_model(model)
@@ -385,7 +382,7 @@ def minspan(model, starting_fluxes=None, coverage=10, cores=4, processes="auto",
                 model.id in i]
             round_filenames = sorted((i for i in starting_filenames if "final" in i), reverse=True)
             starting_fluxes = loadmat(snapshot_dir + round_filenames[0])["fluxes"]
-            print "loaded starting_fluxes from %s" % (snapshot_dir + round_filenames[0])
+            print("loaded starting_fluxes from %s" % (snapshot_dir + round_filenames[0]))
             None  #TODO: look in snapshots
         fluxes = array(dok_matrix(starting_fluxes).todense(), dtype=float64)
         if N.shape != fluxes.shape:
@@ -398,7 +395,7 @@ def minspan(model, starting_fluxes=None, coverage=10, cores=4, processes="auto",
     improvement_tracker = []  # array to keep track of when the score improved
     nnz_log = [nnz(fluxes)]  # array to keep track of nnz with each iteration
     if verbose:
-        print "starting minspan on model %s with %d dimensions" % (model.id, null_dim)
+        print("starting minspan on model %s with %d dimensions" % (model.id, null_dim))
     for k in range(coverage):
         # random order of columns to try out
         column_order = range(null_dim)
@@ -406,7 +403,7 @@ def minspan(model, starting_fluxes=None, coverage=10, cores=4, processes="auto",
         # previous score
         prevNum = nnz(fluxes)
         if verbose:
-            print "starting round %d at nnz=%d" % (k, prevNum)
+            print("starting round %d at nnz=%d" % (k, prevNum))
 
         # different time limit and number of processes for each round
         if k == 0:  # round 0
@@ -459,22 +456,20 @@ def minspan(model, starting_fluxes=None, coverage=10, cores=4, processes="auto",
             for choice in ranked_choices:
                 index_choice = column_indices[choice]
                 if improvement[choice] < 0:
-                    print "result was worse by %d (round %d, column %d)" % \
-                        (-1 * improvement[choice], k, index_choice)
+                    print("result was worse by %d (round %d, column %d)" % (-1 * improvement[choice], k, index_choice))
                     break  # because it is sorted all subsequent ones are worse
                 if minimized_nnz[choice] == 0:
-                    print "solver returned empty vector (round %d, column %d)" % (k, index_choice)
+                    print("solver returned empty vector (round %d, column %d)" % (k, index_choice))
                 if improvement[choice] == 0:
                     break # because it is sorted all subsequent ones are worse
                 flux_choice = flux_vectors[choice]
                 test_fluxes = fluxes.copy()
                 test_fluxes[:, index_choice] = flux_choice
                 if matrix_rank(test_fluxes, tol=default_rank_eps) != null_dim:
-                    print "rank changed (round %d, column %d)" % (k, index_choice)
+                    print("rank changed (round %d, column %d)" % (k, index_choice))
                     continue
                 if abs(S * test_fluxes).max() > default_max_error:
-                    print "No longer null space: error of %E (round %d, column %d)" % \
-                        (abs(S * test_fluxes).max(), k, index_choice)
+                    print("No longer null space: error of %E (round %d, column %d)" % (abs(S * test_fluxes).max(), k, index_choice))
                     continue
                 # if we reach this point, then we have a suitable vector
                 best_choice = choice
@@ -490,8 +485,7 @@ def minspan(model, starting_fluxes=None, coverage=10, cores=4, processes="auto",
                 if nnz_log[-1] < nnz_log[-2]:  # last nnz is smaller than previous
                     improvement_tracker.append((k, column_index))
                     if verbose:
-                        print "improved: round %d, column %4d nnz=%d" % \
-                            (k, column_index, nnz_log[-1])
+                        print("improved: round %d, column %4d nnz=%d" % (k, column_index, nnz_log[-1]))
 
                 # save the result
                 savemat(column_filename % (k, column_index, now()),
@@ -524,8 +518,8 @@ if __name__ == "__main__":
     S = model.to_array_based_model().S
     start = time()
     solved_fluxes = minspan(model, cores=1, verbose=True)
-    print "solved in %.2f seconds" % (time() - start)
-    print "nnz", nnz(solved_fluxes)
-    print "rank", matrix_rank(solved_fluxes)
-    print "max(S * v) =", abs(S * solved_fluxes).max()
+    print("solved in %.2f seconds" % (time() - start))
+    print("nnz", nnz(solved_fluxes))
+    print("rank", matrix_rank(solved_fluxes))
+    print( "max(S * v) =", abs(S * solved_fluxes).max())
     #from IPython import embed; embed()
